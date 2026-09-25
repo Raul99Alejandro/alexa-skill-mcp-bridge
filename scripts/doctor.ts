@@ -226,7 +226,10 @@ if (config) {
   // ---- skill ---------------------------------------------------------------------------------
   if (level >= 2) {
     await check('ASK CLI', () => {
-      const version = spawnSync('ask', ['--version'], { encoding: 'utf8' });
+      const version = spawnSync('ask', ['--version'], {
+        encoding: 'utf8',
+        shell: process.platform === 'win32',
+      });
       if (version.status !== 0) {
         return {
           ok: false,
@@ -234,7 +237,10 @@ if (config) {
           fix: 'npm install -g ask-cli && ask configure',
         };
       }
-      const vendors = spawnSync('ask', ['smapi', 'get-vendor-list'], { encoding: 'utf8' });
+      const vendors = spawnSync('ask', ['smapi', 'get-vendor-list'], {
+        encoding: 'utf8',
+        shell: process.platform === 'win32',
+      });
       if (vendors.status !== 0) {
         return {
           ok: false,

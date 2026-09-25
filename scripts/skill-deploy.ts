@@ -45,7 +45,10 @@ if (!existsSync(model)) {
   process.exit(1);
 }
 
-if (spawnSync('ask', ['--version'], { encoding: 'utf8' }).status !== 0) {
+if (
+  spawnSync('ask', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' })
+    .status !== 0
+) {
   console.error('\nThe ASK CLI is not installed. Run: npm install -g ask-cli && ask configure\n');
   process.exit(1);
 }

@@ -24,6 +24,12 @@ export async function loadRepo(): Promise<Repo> {
   return { root: dirname(configPath), config: await loadConfigFile(configPath) };
 }
 
+/**
+ * On Windows, npx and ask are .cmd shims, which spawnSync cannot start without a shell (ENOENT).
+ * The arguments these scripts pass contain no spaces or shell metacharacters, so a shell is safe.
+ */
+export const SHELL_ON_WINDOWS = process.platform === 'win32';
+
 export function run(
   command: string,
   args: string[],
@@ -34,6 +40,7 @@ export function run(
     cwd,
     stdio: 'inherit',
     env: { ...process.env, ...env },
+    shell: SHELL_ON_WINDOWS,
   });
   return result.status ?? 1;
 }
