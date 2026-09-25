@@ -20,5 +20,47 @@
     "how is {park} in {month}"
   ],
   "SearchHotelsIntent": ["find me a place to stay in {destination}", "hotels in {destination}"],
-  "GetWeatherIntent": ["weather in {city}", "how is the weather in {city}"]
+  "GetWeatherIntent": ["weather in {city}", "how is the weather in {city}"],
+  "_comment_counterpart": "Counterpart (github.com/Raul99Alejandro/counterpart): phrasings from its demo script that the generated model routed to the wrong intent or to Fallback in the simulator.",
+  "FindWorkOrdersIntent": [
+    "what's {stage}",
+    "what's {stage} right now",
+    "anything {stage}",
+    "what's in {stage}",
+    "which cars are {stage}",
+    "what is {stage} right now"
+  ],
+  "FindCakeOrdersIntent": [
+    "what's {stage}",
+    "which cakes are {stage}",
+    "what's in {stage}",
+    "anything {stage}"
+  ],
+  "SalesReportIntent": [
+    "how did we do {period}",
+    "how did we do {period} compared to the week before",
+    "how were sales {period}",
+    "what were sales {period}",
+    "how are sales {period}"
+  ],
+  "slotSynonyms": {
+    "StageType": {
+      "in bay": ["in the bay", "into the bay", "the bay"],
+      "ready for pickup": ["ready to pick up", "ready for pick up"],
+      "waiting on parts": ["waiting for parts"]
+    }
+  },
+  "catchAll": [
+    "close out the cx five they paid by card",
+    "emma's red velvet is being decorated now",
+    "how did we do this week compared to last week",
+    "how many cakes are due saturday",
+    "move the civic into the bay",
+    "owen paid cash for the ram close it out",
+    "put the malibu in the bay",
+    "reorder whatever's low",
+    "take a cake order for priya shah a ten inch chocolate cake due saturday",
+    "the outback is waiting on parts",
+    "what's waiting on parts"
+  ]
 }
