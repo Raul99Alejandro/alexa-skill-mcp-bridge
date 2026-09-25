@@ -8,6 +8,7 @@ import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import {
   ALEXA_PLUS_PROTOCOL_VERSION,
+  agentCoreName,
   serializeConfig,
   type BridgeConfig,
 } from '@alexa-mcp-bridge/core';
@@ -34,7 +35,7 @@ export class AlexaMcpBridgeStack extends cdk.Stack {
 
     // Memory: short-term events always; long-term extraction strategies when memory.longTerm.
     const memory = new agentcore.Memory(this, 'Memory', {
-      memoryName: 'alexa_mcp_bridge',
+      memoryName: agentCoreName(this.stackName),
       description: 'Conversation memory for the Alexa MCP bridge',
       expirationDuration: cdk.Duration.days(30),
       // Namespaces are what the agent reads back (packages/agent/src/memory/agentcore-memory.ts).
@@ -63,7 +64,7 @@ export class AlexaMcpBridgeStack extends cdk.Stack {
       LOG_LEVEL: config.features.debug ? 'debug' : 'info',
     };
     const runtime = new agentcore.Runtime(this, 'Runtime', {
-      runtimeName: 'alexa_mcp_bridge',
+      runtimeName: agentCoreName(this.stackName),
       description: 'Alexa MCP bridge agent',
       agentRuntimeArtifact: agentcore.AgentRuntimeArtifact.fromAsset(repoRoot, {
         file: 'packages/agent/Dockerfile',
@@ -112,7 +113,7 @@ export class AlexaMcpBridgeStack extends cdk.Stack {
     let gatewayUrl: string | undefined;
     if (config.features.gateway) {
       const gateway = new agentcore.Gateway(this, 'Gateway', {
-        gatewayName: 'alexa-mcp-bridge',
+        gatewayName: agentCoreName(this.stackName).replace(/_/g, '-'),
         description: 'MCP gateway for the Alexa MCP bridge',
         authorizerConfiguration: new agentcore.IamAuthorizer(),
         // What the Gateway offers the agent, not what the developer's server must speak.

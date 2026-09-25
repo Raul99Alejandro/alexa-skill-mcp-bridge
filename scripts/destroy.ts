@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { BatchDeleteImageCommand, ECRClient } from '@aws-sdk/client-ecr';
 import {
   PLACEHOLDER_LAMBDA_ARN,
-  STACK_NAME,
+  stackName,
   loadRepo,
   readSkillEndpoint,
   removeEnv,
@@ -19,11 +19,11 @@ import {
 const { root, config } = await loadRepo();
 const infra = join(root, 'infra');
 
-const status = run('npx', ['cdk', 'destroy', STACK_NAME, '--force'], infra);
+const status = run('npx', ['cdk', 'destroy', stackName(), '--force'], infra);
 if (status !== 0) process.exit(status);
 
 // Image tags are the asset hashes recorded at synth time.
-const assetsFile = join(infra, 'cdk.out', `${STACK_NAME}.assets.json`);
+const assetsFile = join(infra, 'cdk.out', `${stackName()}.assets.json`);
 if (existsSync(assetsFile)) {
   const assets = JSON.parse(readFileSync(assetsFile, 'utf8')) as {
     dockerImages?: Record<

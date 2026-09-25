@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ConfigError,
+  agentCoreName,
   applyEnvOverrides,
   loadConfigFromEnv,
   parseConfig,
   serializeConfig,
+  stackName,
 } from './config.js';
 
 describe('parseConfig', () => {
@@ -95,5 +97,34 @@ describe('applyEnvOverrides', () => {
     expect(() => parseConfig(applyEnvOverrides(file, { BRIDGE_SKILL_ID: 'nope' }))).toThrowError(
       /skill\.id: must look like amzn1\.ask\.skill/,
     );
+  });
+});
+
+describe('one bridge per MCP server in the same account', () => {
+  it('BRIDGE_INVOCATION_NAME overrides skill.invocationName', () => {
+    const raw = {
+      mcp: { url: 'http://localhost:3939/mcp' },
+      skill: { invocationName: 'bridge demo' },
+    };
+    expect(
+      parseConfig(applyEnvOverrides(raw, { BRIDGE_INVOCATION_NAME: 'oak street auto' })).skill
+        .invocationName,
+    ).toBe('oak street auto');
+  });
+
+  it('stackName defaults to the original stack and follows BRIDGE_STACK_NAME', () => {
+    expect(stackName({})).toBe('AlexaMcpBridgeStack');
+    expect(stackName({ BRIDGE_STACK_NAME: '  ' })).toBe('AlexaMcpBridgeStack');
+    expect(stackName({ BRIDGE_STACK_NAME: ' CounterpartShopBridge ' })).toBe(
+      'CounterpartShopBridge',
+    );
+  });
+
+  it('agentCoreName keeps the original names for the original stack and derives new ones otherwise', () => {
+    expect(agentCoreName('AlexaMcpBridgeStack')).toBe('alexa_mcp_bridge');
+    expect(agentCoreName('CounterpartShopBridge')).toBe('counterpart_shop_bridge');
+    expect(agentCoreName('Counterpart-Bakery-Bridge')).toBe('counterpart_bakery_bridge');
+    // AgentCore names: a letter first, then letters, digits or underscores, at most 48 characters.
+    expect(agentCoreName(`X${'y'.repeat(80)}`)).toMatch(/^[a-z][a-z0-9_]{0,47}$/);
   });
 });

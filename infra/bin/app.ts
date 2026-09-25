@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
 import * as cdk from 'aws-cdk-lib';
-import { findConfigFile, loadConfigFile } from '@alexa-mcp-bridge/core';
+import { findConfigFile, loadConfigFile, stackName } from '@alexa-mcp-bridge/core';
 import { AlexaMcpBridgeStack } from '../lib/alexa-mcp-bridge-stack.js';
 
 /** CDK entry. Reads bridge.config.ts from the repo root; region comes from config. */
@@ -9,7 +9,8 @@ if (!configPath) throw new Error('bridge.config.ts not found; run from inside th
 const config = await loadConfigFile(configPath);
 
 const app = new cdk.App();
-new AlexaMcpBridgeStack(app, 'AlexaMcpBridgeStack', {
+// After loadConfigFile(), which loads .env: BRIDGE_STACK_NAME lets one account hold one bridge per MCP server.
+new AlexaMcpBridgeStack(app, stackName(), {
   config,
   repoRoot: dirname(configPath),
   env: {

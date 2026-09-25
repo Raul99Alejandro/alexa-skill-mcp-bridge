@@ -9,6 +9,7 @@ import {
   turnOutputSchema,
   type TurnInput,
   type TurnOutput,
+  stackName,
 } from '@alexa-mcp-bridge/core';
 import type { Bridge, BridgeIdentity } from './bridge.js';
 
@@ -85,5 +86,5 @@ function runtimeArnFromOutputs(): string | undefined {
   const file = join(configPath, '..', 'cdk-outputs.json');
   if (!existsSync(file)) return undefined;
   const outputs = JSON.parse(readFileSync(file, 'utf8')) as Record<string, { RuntimeArn?: string }>;
-  return outputs.AlexaMcpBridgeStack?.RuntimeArn;
+  return outputs[stackName()]?.RuntimeArn;
 }

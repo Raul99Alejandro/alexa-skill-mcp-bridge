@@ -185,7 +185,35 @@ export const ENV_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
   BRIDGE_MCP_SECRET_NAME: ['mcp', 'auth', 'secretName'],
   BRIDGE_SKILL_ID: ['skill', 'id'],
   BRIDGE_AWS_REGION: ['aws', 'region'],
+  BRIDGE_INVOCATION_NAME: ['skill', 'invocationName'],
 };
+
+/** The stack every tool starts from when BRIDGE_STACK_NAME is unset. */
+export const DEFAULT_STACK_NAME = 'AlexaMcpBridgeStack';
+
+/**
+ * The CloudFormation stack for this clone. Two bridges in one account (one Alexa Skill per MCP
+ * server) need two stack names; BRIDGE_STACK_NAME in .env sets it for the CDK app and the scripts.
+ */
+export function stackName(env: NodeJS.ProcessEnv = process.env): string {
+  return env.BRIDGE_STACK_NAME?.trim() || DEFAULT_STACK_NAME;
+}
+
+/**
+ * The AgentCore runtime and memory name for a stack. Those names are unique per account, so a second
+ * stack derives its own; the original stack keeps 'alexa_mcp_bridge' so existing deployments are
+ * not replaced. AgentCore allows a letter, then letters, digits or underscores, 48 characters at most.
+ */
+export function agentCoreName(stack: string): string {
+  if (stack === DEFAULT_STACK_NAME) return 'alexa_mcp_bridge';
+  const snake = stack
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const name = /^[a-z]/.test(snake) ? snake : `b_${snake}`;
+  return name.slice(0, 48).replace(/_+$/, '');
+}
 
 /** Apply ENV_OVERRIDES to raw config before it is validated, so zod checks the merged result. */
 export function applyEnvOverrides(raw: unknown, env: NodeJS.ProcessEnv = process.env): unknown {

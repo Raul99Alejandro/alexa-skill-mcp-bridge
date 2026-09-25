@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { checkModelAccess } from './check-model-access.ts';
-import { STACK_NAME, costNote, loadRepo, mcpHost, readOutputs, run, upsertEnv } from './lib.ts';
+import { costNote, stackName, loadRepo, mcpHost, readOutputs, run, upsertEnv } from './lib.ts';
 
 /**
  * npm run deploy: validate config, check model access, cdk deploy, print outputs, the cost
@@ -19,7 +19,7 @@ const status = run(
   [
     'cdk',
     'deploy',
-    STACK_NAME,
+    stackName(),
     '--require-approval',
     'never',
     '--outputs-file',

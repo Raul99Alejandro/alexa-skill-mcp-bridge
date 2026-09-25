@@ -1,7 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { findConfigFile, loadConfigFile, type BridgeConfig } from '@alexa-mcp-bridge/core';
+import {
+  findConfigFile,
+  loadConfigFile,
+  stackName,
+  type BridgeConfig,
+} from '@alexa-mcp-bridge/core';
+
+/** BRIDGE_STACK_NAME from .env, or the original stack. Call after loadRepo(), which loads .env. */
+export { stackName };
 
 /** Shared bits for the deploy, destroy, and check scripts. Node 22 runs these as-is (D23). */
 
@@ -30,8 +38,6 @@ export function run(
   return result.status ?? 1;
 }
 
-export const STACK_NAME = 'AlexaMcpBridgeStack';
-
 export interface StackOutputs {
   LambdaArn?: string;
   RuntimeArn?: string;
@@ -43,7 +49,7 @@ export function readOutputs(root: string): StackOutputs | undefined {
   const file = join(root, 'cdk-outputs.json');
   if (!existsSync(file)) return undefined;
   const all = JSON.parse(readFileSync(file, 'utf8')) as Record<string, StackOutputs>;
-  return all[STACK_NAME];
+  return all[stackName()];
 }
 
 /** Host only: the full URL can carry a token someone pastes into an issue by accident. */
