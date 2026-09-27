@@ -89,9 +89,11 @@ export default defineConfig({
     // Store every user and assistant turn in AgentCore Memory and rehydrate on cold start.
     shortTerm: true,
     // Long-term user preference and summary extraction. Costs a model call per session.
-    longTerm: true,
-    // Events rehydrated into the agent's history on cold start.
-    hydrateLastEvents: 20,
+    // Off for Counterpart: its answers come from live business data, and a remembered
+    // "I couldn't do that" from an earlier session made the model stop calling tools.
+    longTerm: false,
+    // Events rehydrated into the agent's history on cold start. 0 for Counterpart, same reason.
+    hydrateLastEvents: 0,
   },
 
   features: {
