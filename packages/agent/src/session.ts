@@ -1,11 +1,11 @@
-import type { Agent, Model } from '@strands-agents/sdk';
+import type { Agent, MessageData, Model } from '@strands-agents/sdk';
 import { errorFields, type BridgeConfig, type Logger } from '@alexa-mcp-bridge/core';
 import { buildAgent } from './agent/build-agent.js';
 import { buildSystemPrompt, formatToolList } from './agent/prompt.js';
 import { askUserTool, mcpTools } from './agent/tools.js';
 import { QuestionQueue } from './elicitation/queue.js';
 import { resolveMcpAuth, type SecretResolver } from './mcp/auth.js';
-import { BridgeMcpClient } from './mcp/client.js';
+import { BridgeMcpClient, type McpToolDefinition } from './mcp/client.js';
 import { sigV4Fetch } from './mcp/gateway.js';
 import type { MemoryAdapter } from './memory/store.js';
 import { TurnRun } from './turn-run.js';
@@ -49,6 +49,10 @@ export class BridgeSession {
   private agent?: Agent;
   private warmup?: Promise<void>;
   private identity?: SessionIdentity;
+  /** The tool list and Alexa session the agent was built for. */
+  private definitions?: McpToolDefinition[];
+  private sessionId?: string;
+  private rebuild?: (definitions: McpToolDefinition[], messages: MessageData[]) => Agent;
   /** Why the last warm-up failed, for frontends that can show it (the CLI). */
   warmupError?: Error;
 
@@ -133,6 +137,34 @@ export class BridgeSession {
     return this.state === 'overrun' ? 'HealthyBusy' : 'Healthy';
   }
 
+  /** The MCP server announced new tools that the agent does not have yet. */
+  get toolsChanged(): boolean {
+    return this.mcp?.toolsChanged ?? false;
+  }
+
+  /**
+   * Before each new request. AgentCore keeps one warm container per user across Alexa sessions,
+   * so the agent built at warm-up can outlive both its tool list and its conversation: rebuild it
+   * with the server's current tools, and with a clean history when a new Alexa session starts.
+   */
+  async prepare(sessionId: string): Promise<void> {
+    if (!this.mcp || !this.agent || !this.rebuild) return;
+    const newSession = this.sessionId !== undefined && this.sessionId !== sessionId;
+    this.sessionId = sessionId;
+    // Safety net for a missed tools/list_changed: a new session always asks for the current tools.
+    if (newSession) this.mcp.invalidateTools();
+    const definitions = await this.mcp.listTools();
+    if (definitions === this.definitions && !newSession) return;
+    const messages = newSession ? [] : (this.agent.messages as unknown as MessageData[]);
+    this.agent = this.rebuild(definitions, messages);
+    this.definitions = definitions;
+    this.logger.info('agent rebuilt', {
+      reason: newSession ? 'new session' : 'tools changed',
+      tools: definitions.map((d) => d.name),
+      keptMessages: messages.length,
+    });
+  }
+
   get serverName(): string | undefined {
     return this.mcp?.serverInfo?.name;
   }
@@ -168,26 +200,27 @@ export class BridgeSession {
       memory.longTermContext(identity.actorId).catch(() => ''),
     ]);
     const today = (this.options.now ?? (() => new Date()))().toISOString().slice(0, 10);
-    const systemPrompt = buildSystemPrompt({
-      serverName: info.name,
-      serverInstructions: info.instructions ?? '(the server gave no instructions)',
-      toolList: formatToolList(definitions),
-      locale: identity.locale,
-      today,
-      memoryContext,
-      maxSentences: config.speech.maxSentences,
-      maxChoicesSpoken: config.speech.maxChoicesSpoken,
-    });
-    this.mcp = mcp;
-    this.agent = buildAgent({
+    this.rebuild = (tools, messages) => buildAgent({
       model: this.model,
-      tools: [...mcpTools(definitions, mcp, logger), askUserTool(this.queue)],
-      systemPrompt,
-      messages: history,
+      tools: [...mcpTools(tools, mcp, logger), askUserTool(this.queue)],
+      systemPrompt: buildSystemPrompt({
+        serverName: info.name,
+        serverInstructions: info.instructions ?? '(the server gave no instructions)',
+        toolList: formatToolList(tools),
+        locale: identity.locale,
+        today,
+        memoryContext,
+        maxSentences: config.speech.maxSentences,
+        maxChoicesSpoken: config.speech.maxChoicesSpoken,
+      }),
+      messages,
       debugSink: () => this.currentRun?.debug,
       logToolArguments: config.features.debug,
       logger,
     });
+    this.mcp = mcp;
+    this.agent = this.rebuild(definitions, history);
+    this.definitions = definitions;
     logger.info('mcp session ready', {
       server: info.name,
       protocolVersion: info.protocolVersion,

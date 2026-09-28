@@ -95,6 +95,7 @@ async function newRequest(
     return pending(session);
   }
 
+  await session.prepare(invocation.sessionId);
   const run = session.startRun(userMessage(utterance), invocation.debug);
   return deliver(session, invocation, await run.waitForOutcome(deadlineMs), log);
 }
