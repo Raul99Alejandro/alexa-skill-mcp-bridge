@@ -25,6 +25,8 @@ export type ScriptStep =
 
 export class ScriptedModel extends Model<BaseModelConfig> {
   readonly calls: Message[][] = [];
+  /** Tool names the agent offered the model on each call. */
+  readonly toolNames: string[][] = [];
   private cursor = 0;
   private counter = 0;
 
@@ -40,6 +42,7 @@ export class ScriptedModel extends Model<BaseModelConfig> {
 
   async *stream(messages: Message[], options?: StreamOptions): AsyncIterable<ModelStreamEvent> {
     this.calls.push(messages);
+    this.toolNames.push((options?.toolSpecs ?? []).map((t) => t.name));
     let step = this.steps[this.cursor++] ?? { text: 'I have nothing more to add.' };
     while (typeof step === 'function') step = step(messages);
     options?.cancelSignal?.throwIfAborted();

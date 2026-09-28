@@ -5,6 +5,7 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import {
   ElicitRequestSchema,
+  ToolListChangedNotificationSchema,
   type ElicitRequestParams,
   type ElicitResult,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -56,6 +57,7 @@ export class BridgeMcpClient {
   private info?: McpServerInfo;
   private tools?: McpToolDefinition[];
   private connecting?: Promise<McpServerInfo>;
+  private changed = false;
 
   constructor(private readonly options: BridgeMcpClientOptions) {}
 
@@ -77,8 +79,19 @@ export class BridgeMcpClient {
     return this.connecting;
   }
 
+  /** The server said its tools changed since the last list (tools/list_changed). */
+  get toolsChanged(): boolean {
+    return this.changed;
+  }
+
+  /** Forget the cached tool list so the next listTools() asks the server again. */
+  invalidateTools(): void {
+    this.tools = undefined;
+  }
+
   async listTools(): Promise<McpToolDefinition[]> {
     if (this.tools) return this.tools;
+    this.changed = false;
     return this.listToolsOn(await this.ensureClient());
   }
 
@@ -145,6 +158,14 @@ export class BridgeMcpClient {
     client.setRequestHandler(ElicitRequestSchema, (request) =>
       this.options.onElicitation(request.params),
     );
+    // A server can change its tools mid-session (a business that finishes its setup). Drop the
+    // cache so the next listTools() refetches; the session rebuilds its agent on the next turn.
+    client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+      if (this.client !== client) return;
+      this.tools = undefined;
+      this.changed = true;
+      logger.info('mcp tool list changed');
+    });
     transport.onclose = () => {
       if (this.client === client) {
         logger.warn('mcp transport closed; will reconnect on the next call');
