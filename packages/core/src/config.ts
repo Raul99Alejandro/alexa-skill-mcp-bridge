@@ -186,7 +186,13 @@ export const ENV_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
   BRIDGE_SKILL_ID: ['skill', 'id'],
   BRIDGE_AWS_REGION: ['aws', 'region'],
   BRIDGE_INVOCATION_NAME: ['skill', 'invocationName'],
+  // 'false' for a server whose tools change after the skill is generated: every phrase then
+  // reaches the agent whole, through the catch-all, instead of a stale per-tool intent.
+  BRIDGE_TOOL_INTENTS: ['features', 'toolIntents'],
 };
+
+/** Overrides that set a boolean field: 'true' or 'false' in .env. */
+const BOOLEAN_OVERRIDES = new Set(['BRIDGE_TOOL_INTENTS']);
 
 /** The stack every tool starts from when BRIDGE_STACK_NAME is unset. */
 export const DEFAULT_STACK_NAME = 'AlexaMcpBridgeStack';
@@ -221,7 +227,8 @@ export function applyEnvOverrides(raw: unknown, env: NodeJS.ProcessEnv = process
   let merged = raw as Record<string, unknown>;
   for (const [name, path] of Object.entries(ENV_OVERRIDES)) {
     const value = env[name]?.trim();
-    if (value) merged = setPath(merged, path, value);
+    if (!value) continue;
+    merged = setPath(merged, path, BOOLEAN_OVERRIDES.has(name) ? value.toLowerCase() === 'true' : value);
   }
   return merged;
 }
@@ -229,7 +236,7 @@ export function applyEnvOverrides(raw: unknown, env: NodeJS.ProcessEnv = process
 function setPath(
   target: Record<string, unknown>,
   path: readonly string[],
-  value: string,
+  value: string | boolean,
 ): Record<string, unknown> {
   const [head, ...rest] = path;
   if (head === undefined) return target;

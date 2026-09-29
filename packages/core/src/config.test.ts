@@ -112,6 +112,13 @@ describe('one bridge per MCP server in the same account', () => {
     ).toBe('oak street auto');
   });
 
+  it('BRIDGE_TOOL_INTENTS=false sends every phrase to the agent through the catch-all', () => {
+    const raw = { mcp: { url: 'http://localhost:3939/mcp' } };
+    expect(parseConfig(applyEnvOverrides(raw, { BRIDGE_TOOL_INTENTS: 'false' })).features.toolIntents).toBe(false);
+    expect(parseConfig(applyEnvOverrides(raw, { BRIDGE_TOOL_INTENTS: 'true' })).features.toolIntents).toBe(true);
+    expect(parseConfig(applyEnvOverrides(raw, {})).features.toolIntents).toBe(true);
+  });
+
   it('stackName defaults to the original stack and follows BRIDGE_STACK_NAME', () => {
     expect(stackName({})).toBe('AlexaMcpBridgeStack');
     expect(stackName({ BRIDGE_STACK_NAME: '  ' })).toBe('AlexaMcpBridgeStack');
