@@ -21,9 +21,12 @@ let url: string;
 let mcp: McpServer;
 let methods: string[];
 let transport: StreamableHTTPServerTransport;
+/** Fail the next tools/list with a 502, like a server in the middle of a redeploy. */
+let failNextList = false;
 
 beforeEach(async () => {
   methods = [];
+  failNextList = false;
   mcp = new McpServer({ name: 'changing', version: '1.0.0' });
   mcp.registerTool('set_up', { description: 'Set up the business.' }, async () => ({
     content: [{ type: 'text', text: 'Set up. Open me again.' }],
@@ -42,6 +45,11 @@ beforeEach(async () => {
       }
       const parsed = body ? JSON.parse(body) : undefined;
       if (parsed?.method) methods.push(parsed.method);
+      if (parsed?.method === 'tools/list' && failNextList) {
+        failNextList = false;
+        res.writeHead(502).end();
+        return;
+      }
       void transport.handleRequest(req, res, parsed);
     });
   });
@@ -127,6 +135,16 @@ describe('tools that change mid-conversation', () => {
     await mcp.connect(transport);
     const out = await send('hello again', 's2');
     expect(out.status).toBe('done');
+    await session.close();
+  });
+  it('keeps the new session clean even if listing tools failed on its first turn', async () => {
+    const { session, model, send } = harness();
+    await send('set up my flower shop', 's1');
+    failNextList = true;
+    // runTurn throws here; server.ts turns it into the spoken error.
+    await expect(send('hello', 's2')).rejects.toThrow();
+    await send('what orders are due today', 's2');
+    expect(userTexts(model.calls.at(-1) as never)).not.toContain('set up my flower shop');
     await session.close();
   });
 });

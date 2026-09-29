@@ -150,14 +150,19 @@ export class BridgeSession {
   async prepare(sessionId: string): Promise<void> {
     if (!this.mcp || !this.agent || !this.rebuild) return;
     const newSession = this.sessionId !== undefined && this.sessionId !== sessionId;
-    this.sessionId = sessionId;
     // Safety net for a missed tools/list_changed: a new session always asks for the current tools.
     if (newSession) this.mcp.invalidateTools();
+    // If this throws, sessionId stays the old one: the next turn is still a new session and
+    // still starts with a clean history.
     const definitions = await this.mcp.listTools();
-    if (definitions === this.definitions && !newSession) return;
+    if (definitions === this.definitions && !newSession) {
+      this.sessionId = sessionId;
+      return;
+    }
     const messages = newSession ? [] : (this.agent.messages as unknown as MessageData[]);
     this.agent = this.rebuild(definitions, messages);
     this.definitions = definitions;
+    this.sessionId = sessionId;
     this.logger.info('agent rebuilt', {
       reason: newSession ? 'new session' : 'tools changed',
       tools: definitions.map((d) => d.name),
