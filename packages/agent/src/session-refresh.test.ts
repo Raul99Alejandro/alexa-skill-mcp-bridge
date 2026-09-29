@@ -20,6 +20,7 @@ let http: Server;
 let url: string;
 let mcp: McpServer;
 let methods: string[];
+let transport: StreamableHTTPServerTransport;
 
 beforeEach(async () => {
   methods = [];
@@ -27,12 +28,18 @@ beforeEach(async () => {
   mcp.registerTool('set_up', { description: 'Set up the business.' }, async () => ({
     content: [{ type: 'text', text: 'Set up. Open me again.' }],
   }));
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
+  transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
   await mcp.connect(transport);
   http = createServer((req, res) => {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
+      // Like Counterpart: a session id this server doesn't know gets 404 (MCP: start a new session).
+      const sid = req.headers['mcp-session-id'];
+      if (sid && sid !== transport.sessionId) {
+        res.writeHead(404).end();
+        return;
+      }
       const parsed = body ? JSON.parse(body) : undefined;
       if (parsed?.method) methods.push(parsed.method);
       void transport.handleRequest(req, res, parsed);
@@ -109,6 +116,17 @@ describe('tools that change mid-conversation', () => {
     const before = methods.filter((m) => m === 'tools/list').length;
     await send('hello again', 's2');
     expect(methods.filter((m) => m === 'tools/list').length).toBe(before + 1);
+    await session.close();
+  });
+  it('reconnects when the server forgot the MCP session (redeploy) before listing tools for a new Alexa session', async () => {
+    const { session, send } = harness();
+    await send('hello', 's1');
+    // A redeploy: the server comes back without the old session and answers 404 for its id.
+    await mcp.close();
+    transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
+    await mcp.connect(transport);
+    const out = await send('hello again', 's2');
+    expect(out.status).toBe('done');
     await session.close();
   });
 });

@@ -92,7 +92,23 @@ export class BridgeMcpClient {
   async listTools(): Promise<McpToolDefinition[]> {
     if (this.tools) return this.tools;
     this.changed = false;
-    return this.listToolsOn(await this.ensureClient());
+    try {
+      return await this.listToolsOn(await this.ensureClient());
+    } catch (err) {
+      // Same as callTool: 404 means the server forgot the session (redeploy); open a new one once.
+      if (!(err instanceof StreamableHTTPError) || err.code !== 404) throw err;
+      this.options.logger.warn('mcp session expired on the server; reconnecting');
+      const stale = this.client;
+      this.forget();
+      await stale?.close().catch(() => undefined);
+      await this.connect();
+      return this.requireTools();
+    }
+  }
+
+  private requireTools(): McpToolDefinition[] {
+    if (!this.tools) throw new Error('MCP tool list is not available');
+    return this.tools;
   }
 
   private async listToolsOn(client: Client): Promise<McpToolDefinition[]> {
