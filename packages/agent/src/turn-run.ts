@@ -28,6 +28,8 @@ export interface TurnRunOptions {
   input: string;
   logger: Logger;
   debug?: DebugSink;
+  /** features.keepSessionOpen: an answer that is not a question still leaves the session open. */
+  keepSessionOpen?: boolean;
 }
 
 export class TurnRun {
@@ -97,7 +99,7 @@ export class TurnRun {
         status: 'done',
         speech,
         ...(open ? { reprompt: speech } : {}),
-        endSession: !open,
+        endSession: !open && !this.options.keepSessionOpen,
         visual: null,
       });
     } catch (err) {

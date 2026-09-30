@@ -120,6 +120,7 @@ export class BridgeSession {
       queue: this.queue,
       input,
       logger: this.logger,
+      keepSessionOpen: this.config.features.keepSessionOpen,
       ...(debug ? { debug: { toolCalls: [], modelCalls: 0 } } : {}),
     });
     this.currentRun = run;
@@ -205,24 +206,25 @@ export class BridgeSession {
       memory.longTermContext(identity.actorId).catch(() => ''),
     ]);
     const today = (this.options.now ?? (() => new Date()))().toISOString().slice(0, 10);
-    this.rebuild = (tools, messages) => buildAgent({
-      model: this.model,
-      tools: [...mcpTools(tools, mcp, logger), askUserTool(this.queue)],
-      systemPrompt: buildSystemPrompt({
-        serverName: info.name,
-        serverInstructions: info.instructions ?? '(the server gave no instructions)',
-        toolList: formatToolList(tools),
-        locale: identity.locale,
-        today,
-        memoryContext,
-        maxSentences: config.speech.maxSentences,
-        maxChoicesSpoken: config.speech.maxChoicesSpoken,
-      }),
-      messages,
-      debugSink: () => this.currentRun?.debug,
-      logToolArguments: config.features.debug,
-      logger,
-    });
+    this.rebuild = (tools, messages) =>
+      buildAgent({
+        model: this.model,
+        tools: [...mcpTools(tools, mcp, logger), askUserTool(this.queue)],
+        systemPrompt: buildSystemPrompt({
+          serverName: info.name,
+          serverInstructions: info.instructions ?? '(the server gave no instructions)',
+          toolList: formatToolList(tools),
+          locale: identity.locale,
+          today,
+          memoryContext,
+          maxSentences: config.speech.maxSentences,
+          maxChoicesSpoken: config.speech.maxChoicesSpoken,
+        }),
+        messages,
+        debugSink: () => this.currentRun?.debug,
+        logToolArguments: config.features.debug,
+        logger,
+      });
     this.mcp = mcp;
     this.agent = this.rebuild(definitions, history);
     this.definitions = definitions;

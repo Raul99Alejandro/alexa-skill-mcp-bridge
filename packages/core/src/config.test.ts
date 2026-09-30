@@ -27,6 +27,7 @@ describe('parseConfig', () => {
       debug: false,
       toolIntents: true,
       catchAll: true,
+      keepSessionOpen: false,
     });
     expect(config.aws).toEqual({ region: 'us-east-1', logRetentionDays: 7 });
   });
@@ -114,9 +115,22 @@ describe('one bridge per MCP server in the same account', () => {
 
   it('BRIDGE_TOOL_INTENTS=false sends every phrase to the agent through the catch-all', () => {
     const raw = { mcp: { url: 'http://localhost:3939/mcp' } };
-    expect(parseConfig(applyEnvOverrides(raw, { BRIDGE_TOOL_INTENTS: 'false' })).features.toolIntents).toBe(false);
-    expect(parseConfig(applyEnvOverrides(raw, { BRIDGE_TOOL_INTENTS: 'true' })).features.toolIntents).toBe(true);
+    expect(
+      parseConfig(applyEnvOverrides(raw, { BRIDGE_TOOL_INTENTS: 'false' })).features.toolIntents,
+    ).toBe(false);
+    expect(
+      parseConfig(applyEnvOverrides(raw, { BRIDGE_TOOL_INTENTS: 'true' })).features.toolIntents,
+    ).toBe(true);
     expect(parseConfig(applyEnvOverrides(raw, {})).features.toolIntents).toBe(true);
+  });
+
+  it('BRIDGE_KEEP_SESSION_OPEN=true keeps the session open after an answer that is not a question', () => {
+    const raw = { mcp: { url: 'http://localhost:3939/mcp' } };
+    expect(
+      parseConfig(applyEnvOverrides(raw, { BRIDGE_KEEP_SESSION_OPEN: 'true' })).features
+        .keepSessionOpen,
+    ).toBe(true);
+    expect(parseConfig(applyEnvOverrides(raw, {})).features.keepSessionOpen).toBe(false);
   });
 
   it('stackName defaults to the original stack and follows BRIDGE_STACK_NAME', () => {

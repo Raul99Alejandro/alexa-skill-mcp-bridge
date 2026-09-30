@@ -241,3 +241,19 @@ describe('overrun and poll', () => {
     }
   }, 30_000);
 });
+
+describe('session end after a statement', () => {
+  it('ends the session after an answer that is not a question, by default', async () => {
+    const { send } = harness([{ text: 'Two orders are waiting on parts.' }]);
+    const out = await send({ type: 'turn', utterance: { text: 'what is waiting on parts' } });
+    expect(out).toMatchObject({ status: 'done', endSession: true });
+  });
+
+  it('keeps it open with features.keepSessionOpen, so a follow-up stays in the skill', async () => {
+    const { send } = harness([{ text: 'Two orders are waiting on parts.' }], {
+      features: { keepSessionOpen: true },
+    });
+    const out = await send({ type: 'turn', utterance: { text: 'what is waiting on parts' } });
+    expect(out).toMatchObject({ status: 'done', endSession: false });
+  });
+});

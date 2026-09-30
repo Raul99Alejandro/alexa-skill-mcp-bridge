@@ -136,6 +136,11 @@ export const bridgeConfigSchema = z.object({
        * recognise still reaches the agent as text instead of dying in AMAZON.FallbackIntent.
        */
       catchAll: z.boolean().default(true),
+      /**
+       * Keep the Alexa session open after an answer that does not end in a question. Off: such an
+       * answer ends the session, and a follow-up phrase goes to Alexa itself instead of the skill.
+       */
+      keepSessionOpen: z.boolean().default(false),
     })
     .prefault({}),
   aws: z
@@ -189,10 +194,12 @@ export const ENV_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
   // 'false' for a server whose tools change after the skill is generated: every phrase then
   // reaches the agent whole, through the catch-all, instead of a stale per-tool intent.
   BRIDGE_TOOL_INTENTS: ['features', 'toolIntents'],
+  // 'true' for a conversation that goes on after statements ("Done." then the next request).
+  BRIDGE_KEEP_SESSION_OPEN: ['features', 'keepSessionOpen'],
 };
 
 /** Overrides that set a boolean field: 'true' or 'false' in .env. */
-const BOOLEAN_OVERRIDES = new Set(['BRIDGE_TOOL_INTENTS']);
+const BOOLEAN_OVERRIDES = new Set(['BRIDGE_TOOL_INTENTS', 'BRIDGE_KEEP_SESSION_OPEN']);
 
 /** The stack every tool starts from when BRIDGE_STACK_NAME is unset. */
 export const DEFAULT_STACK_NAME = 'AlexaMcpBridgeStack';
@@ -228,7 +235,11 @@ export function applyEnvOverrides(raw: unknown, env: NodeJS.ProcessEnv = process
   for (const [name, path] of Object.entries(ENV_OVERRIDES)) {
     const value = env[name]?.trim();
     if (!value) continue;
-    merged = setPath(merged, path, BOOLEAN_OVERRIDES.has(name) ? value.toLowerCase() === 'true' : value);
+    merged = setPath(
+      merged,
+      path,
+      BOOLEAN_OVERRIDES.has(name) ? value.toLowerCase() === 'true' : value,
+    );
   }
   return merged;
 }
