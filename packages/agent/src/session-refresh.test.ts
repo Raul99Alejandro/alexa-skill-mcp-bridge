@@ -4,15 +4,21 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createLogger, hashId, parseConfig, type AgentInvocation, type TurnInput } from '@alexa-mcp-bridge/core';
+import {
+  createLogger,
+  hashId,
+  parseConfig,
+  type AgentInvocation,
+  type TurnInput,
+} from '@alexa-mcp-bridge/core';
 import { BridgeSession } from './session.js';
 import { noopMemory } from './memory/store.js';
 import { runTurn } from './turn.js';
 import { ScriptedModel } from './testing/scripted-model.js';
 
 /**
- * A server whose tools change mid-conversation, like a business that finishes its setup
- * (Counterpart). AgentCore keeps one warm container per user across Alexa sessions, so the agent
+ * A server whose tools change mid-conversation, for example an app that unlocks new tools once
+ * the user finishes a setup step. AgentCore keeps one warm container per user across Alexa sessions, so the agent
  * has to pick up tools/list_changed itself and must not carry one session's history into the next.
  */
 const logger = createLogger({ service: 'test' }, { write: () => undefined });
@@ -37,7 +43,7 @@ beforeEach(async () => {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
-      // Like Counterpart: a session id this server doesn't know gets 404 (MCP: start a new session).
+      // As the MCP spec says: a session id this server doesn't know gets 404 (start a new session).
       const sid = req.headers['mcp-session-id'];
       if (sid && sid !== transport.sessionId) {
         res.writeHead(404).end();
@@ -65,7 +71,12 @@ afterEach(async () => {
 
 function harness() {
   const model = new ScriptedModel([]);
-  const session = new BridgeSession({ config: parseConfig({ mcp: { url } }), model, memory: noopMemory, logger });
+  const session = new BridgeSession({
+    config: parseConfig({ mcp: { url } }),
+    model,
+    memory: noopMemory,
+    logger,
+  });
   const send = (text: string, sessionId = 's1') =>
     runTurn(session, {
       turn: { type: 'turn', utterance: { text } } satisfies TurnInput,
